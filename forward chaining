@@ -1,0 +1,60 @@
+/*
+meta rules
+*/
+
+rule(1, [canary(X)], [sings(X), chips(X)]).
+rule(2, [frog(X)], [croaks(X), eats_flies(X)]).
+rule(3, [green(X)], [frog(X)]).
+rule(4, [yellow(X)], [canary(X)]).
+
+/*
+meta facts
+*/
+
+fact(1, eats_flies(fritz)).
+fact(2, croaks(fritz)).
+fact(3, sings(tweety)).
+fact(4, chips(tweety)).
+fact(5, croaks(kroger)).
+fact(6, chips(kroger)).
+
+/*
+forward chaining
+*/
+
+start_id(100000).
+
+get_id(Y) :-
+    retract(start_id(X)),
+    Y is X + 1,
+    assert(start_id(Y)).
+
+forward(NewFacts) :-
+    findall(rule(Id, Head, Tail), rule(Id, Head, Tail), Rules),
+    findall(fact(Id, X), fact(Id, X), Facts),
+    forward_chaining(Rules, Facts, NewFacts).
+
+forward_chaining(_, [], _).
+forward_chaining([], _, _).
+forward_chaining([rule(Id, Head, Tail)|Rules], [fact(Id, X)|Facts], NewFactsRec + NewFactsRecRec) :-
+    forward_rule([rule(Id, Head, Tail)|Rules], fact(Id, X), NewFactsRec, NewRulesRec),
+    forward_chaining(NewRulesRec + Rules, NewFactsRec + Facts, NewFactsRecRec).
+
+forward_rule([], _, _, _).
+forward_rule([rule(Id, Head, Tail)|Rules], fact(Id, X), NewFacts, NewRules) :-
+    member(X, Tail) ->
+        (    
+            delete(Tail, X, NewTail),    
+            NewTail = [] ->
+                get_id(NewId),
+                NovelFact = [fact(NewId, Head)],
+                NovelRule = []
+                ;
+                NovelFact = [],
+                NovelRule = [rule(Id, Head, NewTail)]
+            
+        );
+        NovelRule = [rule(Id, Head, Tail)],
+    forward_rule(Rules, fact(Id, X), NewFactsRec, NewRulesRec),
+    append(NewRulesRec, NovelRule, NewRules),
+    append(NewFactsRec, NovelFact, NewFacts).
